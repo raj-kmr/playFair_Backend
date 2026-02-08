@@ -13,8 +13,8 @@ exports.getGame = async (req, res) => {
                 g.initial_playtime_minutes,
                 g.playtime_hours
             FROM games g
-            JOIN gameList gl ON g.gameList _id = gl.id
-            WHERE gl.users_id = $1
+            JOIN gameList gl ON g.gameList_id = gl.id
+            WHERE gl.user_id = $1
             ORDER BY g.created_at DESC
             `,
             [userId]
@@ -47,9 +47,8 @@ exports.createGame = async (req, res) => {
 
 
     try {
-
         const { rows } = await pool.query(
-            "SELECT id FROM gameList WHERE users_id = $1",
+            "SELECT id FROM gameList WHERE user_id = $1",
             [userId]
         )
 
@@ -64,7 +63,7 @@ exports.createGame = async (req, res) => {
                 initial_playtime_minutes,
                 playtime_hours
             )
-            VALUES($1, $2, $3, $4, $0)
+            VALUES($1, $2, $3, $4, $4)
             `,
             [gameListId, name, imageUrl || null, safeInitialPlaytime]
         );
@@ -78,12 +77,21 @@ exports.createGame = async (req, res) => {
 
 exports.updateGame = async (req, res) => {
     const userId = req.user.id;
-    const gameId = req.params.id;
-    const { name, imageUrl } = req.body;
+    const gameId = Number(req.params.id);
+    const { name, imageUrl } = req.body
+
+
+    if (!name && !imageUrl) {
+        return res.status(400).json({
+            message: "At least one field is required to update"
+        });
+    }
+
+
 
     try {
         const result = await pool.query(
-            "SELECT g.id FROM games g JOIN gameList gl ON g.gameList_id = gl.id WHERE g.id = $1 AND gl.users_id = $2",
+            "SELECT g.id FROM games g JOIN gameList gl ON g.gameList_id = gl.id WHERE g.id = $1 AND gl.user_id = $2",
             [gameId, userId]
         )
 
@@ -115,7 +123,7 @@ exports.deleteGame = async (req, res) => {
 
     try {
         const result = await pool.query(
-            "SELECT g.id FROM games g JOIN gameList gl ON g.gameList_id = gl.id WHERE g.id = $1 AND gl.users_id = $2",
+            "SELECT g.id FROM games g JOIN gameList gl ON g.gameList_id = gl.id WHERE g.id = $1 AND gl.user_id = $2",
             [gameId, userId]
         )
 
