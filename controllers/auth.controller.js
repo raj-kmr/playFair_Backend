@@ -2,6 +2,8 @@ const pool = require("../config/db")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 
+// // Prevent duplicate accounts by enforcing unique email
+// // hash the password and store user details in database
 exports.signup = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -25,7 +27,7 @@ exports.signup = async (req, res) => {
         const userId = userResult.rows[0].id;
 
         await pool.query(
-            "INSERT INTO gameLIst (user_id) VALUES ($1)",
+            "INSERT INTO gameList (user_id) VALUES ($1)",
             [userId]
         )
 
@@ -36,6 +38,7 @@ exports.signup = async (req, res) => {
     }
 
 }
+
 
 exports.signin = async (req, res) => {
     const { email, password } = req.body;
