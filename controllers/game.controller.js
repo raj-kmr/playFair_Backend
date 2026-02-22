@@ -1,5 +1,6 @@
 const pool = require("../config/db")
 
+// Retrieve all games for the logged-in user and return summary statistics
 exports.getGame = async (req, res) => {
     const userId = req.user.id;
 
@@ -34,9 +35,12 @@ exports.getGame = async (req, res) => {
     }
 }
 
+// 
 exports.createGame = async (req, res) => {
     const userId = req.user.id;
-    const { name, imageUrl, initialPlaytimeMinutes } = req.body;
+    const { name, imageUrl, initialPlaytimeMinutes, igdbId, description } = req.body;
+
+    const source = igdbId ? "igdb" : "manual";
 
     if (!name) {
         return res.status(400).json({ message: "Game name is required" })
@@ -60,12 +64,15 @@ exports.createGame = async (req, res) => {
                 gameList_id,
                 name,
                 image, 
+                description,
+                igdb_id, 
+                source,
                 initial_playtime_minutes,
                 playtime_hours
             )
-            VALUES($1, $2, $3, $4, $4)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $7)
             `,
-            [gameListId, name, imageUrl || null, safeInitialPlaytime]
+            [gameListId, name, imageUrl || null, description || null, igdbId || null, source, safeInitialPlaytime]
         );
 
         res.status(201).json({ message: "Game created successfully" })
@@ -143,3 +150,74 @@ exports.deleteGame = async (req, res) => {
     }
 }
 
+exports.addIgdbGame = async (req, res) => {
+    const userId = req.user.id;
+    const {
+        igdbId,
+        name,
+        imageUrl,
+        description,
+        playedBefore,
+        initialPlaytimeMinutes
+    } = req.body;
+
+    if (!igdbId || !name) {
+        return res.status(400).json({ message: "IGDB id and name are required" })
+    }
+
+    const safePlayTime = playedBefore && Number.isInteger(initialPlaytimeMinutes) && initialPlaytimeMinutes >= 0 ? initialPlaytimeMinutes : 0;
+
+    try {
+        const { rows: listRows } = await pool.query(
+            "SELECT id FROM gameList WHERE user_id = $1",
+            [userId]
+        );
+
+        if (!listRows.length) {
+            return res.status(404).json({ message: "Game list not found" })
+        }
+
+        const gameListId = listRows[0].id;
+
+        const { rows: existing } = await pool.query(
+            `
+            SELECT id FROM games
+            WHERE gameList_id = $1 AND igdb_id = $2
+            `,
+
+            [gameListId, igdbId]
+        )
+
+        if (existing.length) {
+            return res.status(409).json({ message: "Game already added" })
+        }
+
+        await pool.query(
+            `
+            INSERT INTO games (
+                gameList_id,
+                igdb_id,
+                name,
+                image,
+                description,
+                initial_playtime_minutes,
+                playtime_hours
+            )
+                VALUES ($1, $2, $3, $4, $5, $6, $6)
+            `,
+            [
+                gameListId,
+                igdbId,
+                name.trim(),
+                imageUrl || null,
+                description || null,
+                safePlayTime
+            ]
+        )
+
+        res.status(201).json({ message: "Game added From IGDB successfully" })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({ message: "Failed to add IGDB games" })
+    }
+}
