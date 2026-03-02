@@ -2,6 +2,7 @@ const pool = require("../config/db")
 
 // Retrieve all games for the logged-in user and return summary statistics
 exports.getGame = async (req, res) => {
+    console.log("route get hit")
     const userId = req.user.id;
 
     try {
@@ -29,6 +30,7 @@ exports.getGame = async (req, res) => {
             games,
             totalPlaytime
         });
+        console.log("Response sent")
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Failed to fetch games" })
