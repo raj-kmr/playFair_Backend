@@ -31,8 +31,8 @@ CREATE TABLE games (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_gamelist 
-        FOREIGN KEY (gameList_id)
-        REFERENCES gameList(id)
+        FOREIGN KEY (gamelist_id)
+        REFERENCES gamelist(id)
         ON DELETE CASCADE
 );
 
@@ -41,23 +41,31 @@ CREATE TABLE game_sessions (
     users_id INTEGER NOT NULL,
     games_id INTEGER NOT NULL,
 
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ended_at TIMESTAMPTZ NULL,
+    duration_seconds INTEGER NULL,
 
-    duration_minutes INTEGER,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_session_user 
-        FOREIGN KEY (users_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE,
+            FOREIGN KEY (users_id)
+            REFERENCES users(id)
+            ON DELETE CASCADE,
 
-    CONSTRAINT fk_session_games
-        FOREIGN KEY (games_id)
-        REFERENCES games(id)
-        ON DELETE CASCADE,
+    CONSTRAINT fk_session_game
+            FOREIGN KEY (games_id)
+            REFERENCES games(id)
+            ON DELETE CASCADE
 );
+
+-- 
+CREATE UNIQUE INDEX uniq_one_active_session_per_user
+ON game_sessions(users_id)
+WHERE ended_at IS NULL;
+
+CREATE INDEX idx_sessions_user_game_started 
+ON game_sessions(users_id, games_id, started_at DESC);
+
 
 CREATE TABLE reminders (
     id SERIAL PRIMARY KEY,
