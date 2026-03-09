@@ -1,157 +1,275 @@
+const pool = require("../config/db");
+const ApiError = require("../utils/ApiError");
+const {
+  calculateDurationSeconds,
+  formatSessionResponse,
+} = require("../utils/session.utils");
 
-const db = require("../config/db")
-const ApiError = require("../middleware/errorHandler")
-
-
-// Helper: compute duration in seconds
-function computeDurationSeconds(started_at, ended_at) {
-    const ms = new Date().getTime(ended_at) - new Date().getTime(started_at);
-    return Math.max(0, Math.floor(ms / 1000));
-}
-
-async function assertGameOwnedByUser(client, { userId, gameId }) {
-    const owned = await client.query(
-        `
-        SELECT 1
-        FROM games g
-        JOIN gamelist gl ON gl.id = g.gamelist_id
-        WHERE g.id = $1 AND gl.users_id = $2
-        LIMIT 1
-        `, [gameId, userId]
-    )
-
-    if (owned.rowCount === 0) {
-        throw new ApiError(404, "Game not found or not Accessible");
-    }
-}
-
-export const sessionsService = {
-    /*
-        Start Session:
-        1. Check if game belongs to user
-        2. insert new Session 
-    */
-    async StartSession({ userId, gameId }) {
-        const client = await db.connect();
-
-        try {
-            await client.query("BEGIN");
-
-            await assertGameOwnedByUser(client, { userId, gameId });
-
-            let inserted;
-            try {
-                inserted = await client.query(`
-                    INSERT INTO game_sessions (users_id, games_id, started_at)
-                    VALUES ($1, $2, now())
-                    RETURNING id, users_id, games_id, started_at, ended_at, duration_seconds
-                `, [userId, gameId])
-            } catch (err) {
-                // Postgres unique viloation code = 23505
-                // This happens when user already has an active session (ended at IS NULL)
-                if (e?.code === "23505") {
-                    throw new ApiError(409, "You already have an active session")
-                }
-                throw e;
-            }
-            await client.query("COMMIT")
-            return inserted.rows[0];
-        } catch (err) {
-            await client.query("ROLLBACK")
-            throw err;
-        } finally {
-            client.release()
-        }
-    },
-
-    // End the currently active session for user
-    async endActiveSession({userId}) {
-        const client = await db.connect();
-
-        try {
-            await client.query("BEGIN")
-
-            const active = await client.query(
-                `
-                SELECT id, users_id, games_id, started_at, ended_at
-                FROM game_sessions
-                WHERE users_id = $1 AND ended_at IS NULL
-                ORDER BY started_at DESC
-                LIMIT 1
-                FOR UPDATE
-                `, [userId]
-            )
-            
-            if(active.rowCount === 0){
-                throw new ApiError(404, "No active session to end");
-            }
-
-            const s = active.rows[0];
-            const endedAt = new Date()
-            const durationSeconds = computeDurationSeconds(s.started_at, endedAt)
-
-            const updated = await client.query(
-                `
-                UPDATE  game_sessions
-                SET ended_at = $1
-                        duration_seconds = $2
-                WHERE id = $3
-                RETURNING id, users_id, games_id, started_at, ended_at, duration_seconds
-                `, 
-                [endedAt.toISOString(), durationSeconds, s.id]
-            );
-
-            await client.query("COMMIT")
-            return updated.rows[0]
-        } catch(err) {
-            await client.query("ROLLBACK")
-            throw err;
-        } finally {
-            client.release()
-        }
-    },
-
-    /* List sessions for a game for this user only.
-        Prevents data leakage: user must own the game.
-    */ 
-   async listSessionsByGame({userId, gameId}){
-    const client = await db.connect();
+const sessionsService = {
+  async startSession({ userId, gameId }) {
+    const client = await pool.connect();
 
     try {
-        await assertGameOwnedByUser(client, {userId, gameId});
+      await client.query("BEGIN");
 
-        const result = await client.query(
-            `
-            SELECT id, users_id, games_id, started_at, ended_at, duration_seconds
-            FROM game_sessions
-            WHERE users_id = $1 AND games_id = $2
-            ORDER BY started_at DESC
-            LIMIT 200
-            `,
-            [userId, gameId]
-        )
-        
-        return result.rows;
-    } finally{
-        client.release();
+      /**
+       * Step 1:
+       * Verify the game belongs to the authenticated user.
+       *
+       * Your schema:
+       * users -> gameList (one per user) -> games
+       *
+       * So we join:
+       * games -> gamelist -> users
+       */
+      const gameCheckQuery = `
+        SELECT 
+          g.id,
+          g.name,
+          gl.user_id
+        FROM games g
+        INNER JOIN gameList gl ON g.gamelist_id = gl.id
+        WHERE g.id = $1 AND gl.user_id = $2
+        LIMIT 1
+      `;
+
+      const gameCheckResult = await client.query(gameCheckQuery, [gameId, userId]);
+
+      if (gameCheckResult.rowCount === 0) {
+        throw new ApiError(404, "Game not found or does not belong to this user");
+      }
+
+      /**
+       * Step 2:
+       * Insert a new active session.
+       *
+       * Your DB already protects one active session per user:
+       * unique index where ended_at IS NULL
+       *
+       * So even if two requests come quickly, DB stays safe.
+       */
+      const insertQuery = `
+        INSERT INTO game_sessions (users_id, games_id, started_at)
+        VALUES ($1, $2, NOW())
+        RETURNING *
+      `;
+
+      let insertResult;
+
+      try {
+        insertResult = await client.query(insertQuery, [userId, gameId]);
+      } catch (error) {
+        /**
+         * PostgreSQL unique violation error code = 23505
+         * This happens if user already has one active session.
+         */
+        if (error.code === "23505") {
+          throw new ApiError(409, "User already has an active session");
+        }
+
+        throw error;
+      }
+
+      await client.query("COMMIT");
+
+      return formatSessionResponse(insertResult.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
     }
-   },
+  },
 
-   // Helper function for frontend hydration
-   // Allows app to re-sync on launch even if AsyncStorage was cleared
-   async getActiveSession({userId}) {
-    const result = await db.query(
-        `
-        SELECT id, users_id, games_id, started_at, ended_at, duration_seconds
+  async endActiveSession({ userId }) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      /**
+       * Step 1:
+       * Lock the active session row for this user.
+       *
+       * FOR UPDATE prevents race conditions such as:
+       * - user taps stop twice
+       * - two requests try to end the same session
+       */
+      const activeSessionQuery = `
+        SELECT *
         FROM game_sessions
         WHERE users_id = $1 AND ended_at IS NULL
         ORDER BY started_at DESC
         LIMIT 1
-        `, 
-        [userId]
-    )
+        FOR UPDATE
+      `;
 
-    return result.rows[0] || null;
-   }
+      const activeSessionResult = await client.query(activeSessionQuery, [userId]);
 
-}
+      if (activeSessionResult.rowCount === 0) {
+        throw new ApiError(404, "No active session found");
+      }
+
+      const activeSession = activeSessionResult.rows[0];
+      const endedAt = new Date();
+      const durationSeconds = calculateDurationSeconds(
+        activeSession.started_at,
+        endedAt
+      );
+
+      /**
+       * Step 2:
+       * Update the active session with end time + duration
+       */
+      const updateQuery = `
+        UPDATE game_sessions
+        SET ended_at = $1,
+            duration_seconds = $2
+        WHERE id = $3
+        RETURNING *
+      `;
+
+      const updateResult = await client.query(updateQuery, [
+        endedAt.toISOString(),
+        durationSeconds,
+        activeSession.id,
+      ]);
+
+      /**
+       * Step 3:
+       * Optional but useful:
+       * update games.playtime_hours based on total completed minutes
+       *
+       * Because your games table stores:
+       * - playtime_hours
+       * - initial_playtime_minutes
+       *
+       * For now we can update playtime_hours using:
+       * total completed session duration + initial_playtime_minutes
+       */
+      const gameId = activeSession.games_id;
+
+      const totalDurationQuery = `
+        SELECT COALESCE(SUM(duration_seconds), 0) AS total_seconds
+        FROM game_sessions
+        WHERE users_id = $1
+          AND games_id = $2
+          AND ended_at IS NOT NULL
+      `;
+
+      const totalDurationResult = await client.query(totalDurationQuery, [
+        userId,
+        gameId,
+      ]);
+
+      const totalSessionSeconds = Number(totalDurationResult.rows[0].total_seconds || 0);
+
+      const gameInfoQuery = `
+        SELECT initial_playtime_minutes, playtime_hours
+        FROM games
+        WHERE id = $1
+        LIMIT 1
+      `;
+
+      const gameInfoResult = await client.query(gameInfoQuery, [gameId]);
+
+      const initialPlaytimeMinutes = Number(
+        gameInfoResult.rows[0]?.initial_playtime_minutes || 0
+      )
+
+      const existingPlaytimeHours = Number(
+        gameInfoResult.rows[0]?.playtime_hours || 0
+      )
+
+      const baseMinutes = initialPlaytimeMinutes > 0 ? initialPlaytimeMinutes : existingPlaytimeHours * 60;
+
+      const totalMinutes = baseMinutes + totalSessionSeconds / 60;
+      const totalHours = totalMinutes / 60;
+
+      const updatedGameResult = await client.query(
+        `
+          UPDATE games
+          SET playtime_hours = $1
+          WHERE id = $2
+          RETURNING id, playtime_hours, initial_playtime_minutes
+        `,
+        [totalHours, gameId]
+      );
+
+      console.log("SESSION DEBUG:", {
+        gameId,
+        initialPlaytimeMinutes,
+        existingPlaytimeHours,
+        totalSessionSeconds,
+        baseMinutes,
+        totalMinutes,
+        totalHours,
+      });
+
+      console.log("UPDATED GAME:", updatedGameResult.rows[0]);
+
+      await client.query("COMMIT");
+
+      return formatSessionResponse(updateResult.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  async getSessionsByGame({ userId, gameId }) {
+    /**
+     * First verify the game belongs to the user.
+     */
+    const gameCheckQuery = `
+      SELECT 
+        g.id
+      FROM games g
+      INNER JOIN gameList gl ON g.gamelist_id = gl.id
+      WHERE g.id = $1 AND gl.user_id = $2
+      LIMIT 1
+    `;
+
+    const gameCheckResult = await pool.query(gameCheckQuery, [gameId, userId]);
+
+    if (gameCheckResult.rowCount === 0) {
+      throw new ApiError(404, "Game not found or does not belong to this user");
+    }
+
+    /**
+     * Fetch session history for this game.
+     */
+    const sessionsQuery = `
+      SELECT *
+      FROM game_sessions
+      WHERE users_id = $1 AND games_id = $2
+      ORDER BY started_at DESC
+    `;
+
+    const sessionsResult = await pool.query(sessionsQuery, [userId, gameId]);
+
+    return sessionsResult.rows.map(formatSessionResponse);
+  },
+
+  async getActiveSession({ userId }) {
+    const query = `
+      SELECT *
+      FROM game_sessions
+      WHERE users_id = $1 AND ended_at IS NULL
+      ORDER BY started_at DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [userId]);
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return formatSessionResponse(result.rows[0]);
+  },
+};
+
+module.exports = sessionsService;
