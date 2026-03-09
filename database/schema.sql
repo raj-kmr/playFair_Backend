@@ -82,12 +82,12 @@ CREATE TABLE reminders (
     CONSTRAINT fk_reminder_user 
         FOREIGN KEY (users_id)
         REFERENCES users(id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
 
     CONSTRAINT fk_reminder_game
         FOREIGN KEY (games_id)
         REFERENCES games(id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
 );
 
 CREATE TABLE tasks (
@@ -104,7 +104,7 @@ CREATE TABLE tasks (
     CONSTRAINT fk_task_user 
         FOREIGN KEY (users_id)
         REFERENCES users(id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
 );
 
 CREATE TABLE daily_task_status (
@@ -118,7 +118,7 @@ CREATE TABLE daily_task_status (
     CONSTRAINT fk_daily_tasks 
         FOREIGN KEY (tasks_id)
         REFERENCES tasks(id)
-        ON DELETE CASCADE,
+        ON DELETE CASCADE
 
     CONSTRAINT unique_task_per_day
         UNIQUE (tasks_id, date),

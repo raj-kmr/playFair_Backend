@@ -1,20 +1,27 @@
-const express = require("express")
-const authValidation = require("../middleware/auth.middleware");
-const sessionsController = require("../controllers/session.controller")
-
-// Session route:
-// Start/end are POST because they create/update state
-// list is GET
-
+const express = require("express");
+const sessionsController = require("../controllers/session.controller");
+const verifytoken = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
-router.post("/games/:id/sessions/start", authValidation, sessionsController.start)
-router.post("/games/:id/sessions/end", authValidation, sessionsController.end)
-router.get("/games/:id/sessions", authValidation, sessionsController.listByGame)
+/**
+ * Start a new session for a specific game
+ */
+router.post("/games/:id/sessions/start", verifytoken, sessionsController.startSession);
 
-// server hydration endpoint:
+/**
+ * End the user's currently active session
+ */
+router.post("/games/:id/sessions/end", verifytoken, sessionsController.endSession);
 
-router.get("/sessions/active", authValidation, sessionsController.active)
+/**
+ * Get session history for a specific game
+ */
+router.get("/games/:id/sessions", verifytoken, sessionsController.getSessionsByGame);
+
+/**
+ * Get the currently active session for the logged-in user
+ */
+router.get("/sessions/active", verifytoken, sessionsController.getActiveSession);
 
 module.exports = router;
