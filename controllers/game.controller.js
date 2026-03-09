@@ -12,6 +12,8 @@ exports.getGame = async (req, res) => {
                 g.id, 
                 g.name, 
                 g.image, 
+                g.description,
+                g.igdb_id,
                 g.initial_playtime_minutes,
                 g.playtime_hours
             FROM games g
@@ -23,7 +25,7 @@ exports.getGame = async (req, res) => {
         )
 
         const totalPlaytime = games.reduce(
-            (sum, game) => sum + game.playtime_hours, 0
+            (sum, game) => sum + Number(game.playtime_hours || 0), 0
         )
 
         res.status(200).json({
@@ -51,6 +53,7 @@ exports.createGame = async (req, res) => {
     const safeInitialPlaytime = Number.isInteger(initialPlaytimeMinutes) &&
         initialPlaytimeMinutes >= 0 ? initialPlaytimeMinutes : 0;
 
+    const playtimeHours = safeInitialPlaytime / 60; 
 
     try {
         const { rows } = await pool.query(
@@ -72,9 +75,9 @@ exports.createGame = async (req, res) => {
                 initial_playtime_minutes,
                 playtime_hours
             )
-            VALUES($1, $2, $3, $4, $5, $6, $7, $7)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
             `,
-            [gameListId, name, imageUrl || null, description || null, igdbId || null, source, safeInitialPlaytime]
+            [gameListId, name, imageUrl || null, description || null, igdbId || null, source, safeInitialPlaytime, playtimeHours]
         );
 
         res.status(201).json({ message: "Game created successfully" })
@@ -169,6 +172,8 @@ exports.addIgdbGame = async (req, res) => {
 
     const safePlayTime = playedBefore && Number.isInteger(initialPlaytimeMinutes) && initialPlaytimeMinutes >= 0 ? initialPlaytimeMinutes : 0;
 
+    const playtimeHours = safePlayTime / 60;
+
     try {
         const { rows: listRows } = await pool.query(
             "SELECT id FROM gameList WHERE user_id = $1",
@@ -205,7 +210,7 @@ exports.addIgdbGame = async (req, res) => {
                 initial_playtime_minutes,
                 playtime_hours
             )
-                VALUES ($1, $2, $3, $4, $5, $6, $6)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
             `,
             [
                 gameListId,
@@ -213,7 +218,8 @@ exports.addIgdbGame = async (req, res) => {
                 name.trim(),
                 imageUrl || null,
                 description || null,
-                safePlayTime
+                safePlayTime,
+                playtimeHours
             ]
         )
 
