@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 
 // Validate mimetype to allow images only
 const fileFilter = (_req, file, cb) => {
-    if(file.mimetype?.startsWith("image/")) cb(null, true);
+    if(file.mimetype && file.mimetype.startsWith("image/")) cb(null, true);
     else cb(new Error("Only image uploads are allowed"))
 }
 
@@ -31,4 +31,4 @@ router.post("/images", upload.single("image"), (req, res) => {
     res.json({imageUrl})
 })
 
-export default router;
+module.exports = router;

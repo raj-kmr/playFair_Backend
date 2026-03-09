@@ -4,10 +4,12 @@ const app = express()
 const cors = require("cors")
 const port = process.env.PORT;
 const uploadRoutes = require("./routes/uploads")
+const errorHandler = require("./middleware/errorHandler")
 
 //middleware
 app.use(cors())
 app.use(express.json())
+app.use(errorHandler);
 
 app.use((req, res, next) => {
     console.log("INCOMING: ", req.method, req.url)
@@ -15,6 +17,9 @@ app.use((req, res, next) => {
 })
 
 app.use("/igdb", require("./routes/igdb.router"));
+const sessionsRoutes = require("./routes/session.router")
+
+app.use("/api", sessionsRoutes)
 
 // Serve uploaded files publicaly, Replace with S3 later
 app.use("/uploads", express.static("uploads")) // serve uploaded files

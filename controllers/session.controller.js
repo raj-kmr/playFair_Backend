@@ -1,64 +1,85 @@
-const sessionService = require("../services/session.service")
+const sessionsService = require("../services/session.service");
 
-// - Validate request  shape
-// - Calls Service
-// - sends Http response
+const sessionsController = {
+  async startSession(req, res, next) {
+    try {
+      /**
+       * req.user should come from your JWT middleware.
+       * Example:
+       * req.user = { id: decoded.id }
+       */
+      const userId = req.user.id;
+      const gameId = Number(req.params.id);
 
-export const  sessionsController = {
-    async start(req, res, next) {
-        try {
-            const userId = req.user.id;
-            const gameId = Number(req.params.id);
+      if (!gameId || Number.isNaN(gameId)) {
+        return res.status(400).json({
+          message: "Invalid game id",
+        });
+      }
 
-            if(!Number.isInteger(gameId)){
-                return res.status(400).json({message: "Invalid game ID"});
-            }
+      const session = await sessionsService.startSession({ userId, gameId });
 
-            const session = await sessionService.startSession({userId, gameId});
-
-            res.status(201).json({session, message: "Session Started"});
-        } catch(err) {
-            next(err);
-        }
-    },
-
-    async end(req, res, next) {
-        try {
-            const userId = req.user.id;
-
-            const session = await sessionService.endActiveSession({userId})
-
-            res.status(200).json({session, message: "Session Ended"});
-        } catch(err){
-            next(err);
-        }
-    },
-
-    async listByGame(req, res, next){
-        try {
-            const userId = req.user.id;
-            const gameId = Number(req.params.id);
-
-            if(!Number.isInteger(gameId)){
-                return res.status(400).json({message: "Invalid game ID"})
-            }
-
-            const sessions = await sessionService.listSessionsByGame({userId, gameId})
-
-            res.statu(200).json({ sessions })
-        } catch(err) {
-            next(err);
-        }
-    },
-
-    async active(req, res, next ) {
-        try {
-            const userId = req.user.id;
-
-            const session = await sessionService.getActiveSession({userId})
-            res.status(200).json({session})
-        } catch(err) {
-            next(err)
-        }
+      return res.status(201).json({
+        message: "Session started successfully",
+        session,
+      });
+    } catch (error) {
+      next(error);
     }
-}
+  },
+
+  async endSession(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      const session = await sessionsService.endActiveSession({ userId });
+
+      return res.status(200).json({
+        message: "Session ended successfully",
+        session,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getSessionsByGame(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const gameId = Number(req.params.id);
+
+      if (!gameId || Number.isNaN(gameId)) {
+        return res.status(400).json({
+          message: "Invalid game id",
+        });
+      }
+
+      const sessions = await sessionsService.getSessionsByGame({
+        userId,
+        gameId,
+      });
+
+      return res.status(200).json({
+        sessions,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getActiveSession(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      const activeSession = await sessionsService.getActiveSession({ userId });
+
+      return res.status(200).json({
+        activeSession,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+};
+
+module.exports = sessionsController;
