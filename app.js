@@ -33,6 +33,9 @@ app.get("/test", (req, res) => {
 const authRoutes = require("./routes/auth.router")
 app.use("/auth", authRoutes)
 
+const taskRoutes = require("./routes/task.router")
+app.use("/api", taskRoutes);
+
 const gameRoutes = require("./routes/game.router")
 app.use("/games", gameRoutes)
 
