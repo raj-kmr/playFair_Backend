@@ -91,38 +91,33 @@ CREATE TABLE reminders (
 );
 
 CREATE TABLE tasks (
-    id SERIAL PRIMARY KEY,
-    users_id INTEGER NOT  NULL,
-
-    title VARCHAR(100) NOT NULL,
-    category VARCHAR(50),
-
-    is_active BOOLEAN DEFAULT TRUE,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_task_user 
-        FOREIGN KEY (users_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(100) NOT NULL,
+  description TEXT,
+  category VARCHAR(50),
+  frequency VARCHAR(20) NOT NULL DEFAULT 'daily',
+  target_days TEXT[],
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE daily_task_status (
-    id SERIAL PRIMARY KEY,
-    tasks_id INTEGER NOT NULL,
-    date DATE NOT NULL,
-
-    is_completed BOOLEAN DEFAULT FALSE,
-    completed_at TIMESTAMP,
-
-    CONSTRAINT fk_daily_tasks 
-        FOREIGN KEY (tasks_id)
-        REFERENCES tasks(id)
-        ON DELETE CASCADE
-
-    CONSTRAINT unique_task_per_day
-        UNIQUE (tasks_id, date),
+CREATE TABLE task_daily_status (
+  id SERIAL PRIMARY KEY,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  is_completed BOOLEAN NOT NULL default false,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL default now(),
+  updated_at TIMESTAMPTZ NOT NULL default now(),
+  unique (task_id, date)
 );
+
+CREATE INDEX  idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX  idx_tasks_user_active ON tasks(user_id, is_active);
+CREATE INDEX  idx_task_daily_status_user_date ON task_daily_status(user_id, date);
 
 
 CREATE TABLE gaming_unlock_rules (
