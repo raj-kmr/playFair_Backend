@@ -13,8 +13,8 @@ async function createTask(req, res) {
         const validation = validateCreateTaskBody(req.body);
 
         // if validation fails
-        if(validation.error){
-            return res.status(400).json({message: validation.error})
+        if (validation.error) {
+            return res.status(400).json({ message: validation.error })
         }
 
         const userId = req.user.id; // coming from auth middleware
@@ -25,7 +25,7 @@ async function createTask(req, res) {
             message: "Task created successfully",
             task
         })
-    } catch(error) {
+    } catch (error) {
         return res.status(500).json({
             message: error.message || "Internal server error"
         })
@@ -38,10 +38,10 @@ async function getTasks(req, res) {
         const userId = req.user.id;
 
         const active = req.query.active;
-        const tasks = await getTasksService(userId, {active})
+        const tasks = await getTasksService(userId, { active })
 
-        return res.status(200).json({tasks})
-    } catch(error) {
+        return res.status(200).json({ tasks })
+    } catch (error) {
         return res.status(500).json({
             message: error.message || "Internal server error"
         })
@@ -51,21 +51,23 @@ async function getTasks(req, res) {
 // Update task daily status
 async function updateTaskDailyStatus(req, res) {
     try {
+        console.log("CONTROLLER BODY:", req.body);
+        console.log("TYPE OF isCompleted:", typeof req.body?.isCompleted);
         const validation = validateDailyStatusBody(req.body)
 
-        if(validation.error){
-            return res.status(400).json({message: validation.error})
+        if (validation.error) {
+            return res.status(400).json({ message: validation.error })
         }
 
         const userId = req.user.id;
         const taskId = Number(req.params.id)
 
-        if(!taskId) {
-            return res.status(400).json({message: "Invalid task Id"})
+        if (!taskId) {
+            return res.status(400).json({ message: "Invalid task Id" })
         }
 
         const status = await updateTaskDailyStatusService(
-            userId, 
+            userId,
             taskId,
             validation.value
         );
@@ -74,13 +76,13 @@ async function updateTaskDailyStatus(req, res) {
             message: "Task Updated Successfully",
             status
         })
-    } catch(err) {
-        if (err.message === "TASK NOT FOUND"){
-            return res.status(404).json({message: "task not found"})
+    } catch (err) {
+        if (err.message === "TASK NOT FOUND") {
+            return res.status(404).json({ message: "task not found" })
         }
 
-        if(err.message === "TASK_INACTIVE") {
-            return res.status(400).json({message: "Inactive task can not be updated"})
+        if (err.message === "TASK_INACTIVE") {
+            return res.status(400).json({ message: "Inactive task can not be updated" })
         }
 
         return res.status(500).json({
@@ -95,7 +97,7 @@ async function getTaskDailyStatus(req, res) {
 
         const date = req.query.date;
 
-        if(!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)){
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
             return res.status(400).json({
                 message: "Valid date query param is required"
             })
@@ -104,7 +106,7 @@ async function getTaskDailyStatus(req, res) {
         const result = await getTaskDailyStatusService(userId, date)
 
         return res.status(200).json(result)
-    } catch(err){
+    } catch (err) {
         return res.status(500).json({
             message: err.message || "Internal server error"
         })

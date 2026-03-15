@@ -64,7 +64,10 @@ function validateDailyStatusBody(body) {
         return {error: "Date must be in YYYY-MM-DD format"}; // Date must be in format
     }
 
-    if(typeof(isCompleted) === "boolean"){
+    // if(isCompleted === "true") isCompleted = true;
+    // if(isCompleted === "false") isCompleted = false;
+
+    if(typeof isCompleted !== "boolean"){
         return {error: "isCompleted must be boolean"}
     }
 
