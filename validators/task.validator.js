@@ -79,7 +79,48 @@ function validateDailyStatusBody(body) {
     }
 }
 
+function validateUpdateTaskBody(body) {
+    const title = body.title?.trim();
+    const description = body.description?.trim() || null;
+    const category = body.category?.trim().toLowerCase() || null;
+    const frequency = body.frequency?.trim().toLowerCase() || null;
+    const targetDays = body.targetDays ?? null;
+
+    if(!title) {
+        return {error: "Title is required"}
+    }
+
+    if(title.length < 2 || title.length > 100) {
+        return {error: "Title must be between 2 and 100 characters"}
+    }
+
+    if(!allowedFrequencies.includes(frequency)) {
+        return {error: "Invalid frequency"}
+    }
+
+    if(category && !allowedCategories.includes(category)){
+        return {error: "Invalid category"}
+    }
+
+    if((frequency === "weekly" || frequency === "custom") && targetDays) {
+        if(!Array.isArray(targetDays)) {
+            return {error: "targetDays must be an array"}
+        }
+    }
+
+    return {
+        value: {
+            title,
+            description,
+            category,
+            frequency,
+            targetDays
+        }
+    }
+}
+
 module.exports = {
     validateCreateTaskBody, 
-    validateDailyStatusBody
+    validateDailyStatusBody,
+    validateUpdateTaskBody
 }

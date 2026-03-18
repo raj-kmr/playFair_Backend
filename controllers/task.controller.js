@@ -1,9 +1,12 @@
-const { validateCreateTaskBody, validateDailyStatusBody } = require("../validators/task.validator");
+const { validateCreateTaskBody, validateDailyStatusBody, validateUpdateTaskBody } = require("../validators/task.validator");
 const {
     createTaskService,
     getTasksService,
     updateTaskDailyStatusService,
-    getTaskDailyStatusService } = require("../services/task.service")
+    getTaskDailyStatusService,
+    updateTaskService,
+    deleteTaskService
+} = require("../services/task.service")
 
 
 // Create task controller 
@@ -111,9 +114,72 @@ async function getTaskDailyStatus(req, res) {
     }
 }
 
+async function updateTask(req, res) {
+    try {
+        const validation = validateUpdateTaskBody(req.body);
+
+        if (validation.error) {
+            return res.status(400).json({ message: validation.error })
+        }
+
+        const userId = req.user.id;
+        const taskId = Number(req.params.id);
+
+        if (!taskId) {
+            return res.status(400).json({ message: "Invalid task ID" });
+        }
+
+        const task = await updateTaskService(userId, taskId, validation.value);
+
+        return res.status(200).json({
+            message: "Task updated successfully",
+            task
+        })
+    } catch (err) {
+        if (err.message === "TASK_NOT_FOUND") {
+            return res.status(404).json({ message: "Task not found" })
+        }
+
+        if (err.message === "DUPLICATE_TASK") {
+            return res.status(404).json({ message: "A similar active task already exist" })
+        }
+
+        return res.status(500).json({
+            message: err.message || "Internal server error"
+        })
+    }
+}
+
+async function deleteTask(req, res) {
+    try {
+        const userId = req.user.id;
+        const taskId = Number(req.params.id);
+
+        if(!taskId) {
+            return res.status(400).json({message: "Invalid task ID"})
+        }
+
+        await deleteTaskService(userId, taskId);
+
+        return res.status(200).json({
+            message: "Task deleted successfully"
+        })
+    } catch(err){
+        if(err.message === "TASK_NOT_FOUND"){
+            return res.status(404).json({message: "Task not found"})
+        }
+
+        return res.status(500).json({
+            message: err.message || "Internal server error"
+        })
+    }
+}
+
 module.exports = {
     createTask,
     getTasks,
     updateTaskDailyStatus,
-    getTaskDailyStatus
+    getTaskDailyStatus,
+    updateTask,
+    deleteTask
 }
