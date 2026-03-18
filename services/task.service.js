@@ -34,8 +34,8 @@ async function createTaskService(userId, payload) {
 }
 
 // Return all task to user
-async function getTasksService(userId, options = {}){
-    
+async function getTasksService(userId, options = {}) {
+
     let query = `
         SELECT 
             id,
@@ -53,7 +53,7 @@ async function getTasksService(userId, options = {}){
 
     const values = [userId]
 
-    if(options.active === "true"){
+    if (options.active === "true") {
         query += `AND is_active = true`
     }
 
@@ -65,8 +65,8 @@ async function getTasksService(userId, options = {}){
 }
 
 // Marks a task complete or incomplete for the day
-async function updateTaskDailyStatusService(userId, taskId, payload){
-    const { date, isCompleted} = payload;
+async function updateTaskDailyStatusService(userId, taskId, payload) {
+    const { date, isCompleted } = payload;
 
     const taskCheckQuery = `
         SELECT id, is_active
@@ -77,15 +77,15 @@ async function updateTaskDailyStatusService(userId, taskId, payload){
 
     const taskCheck = await pool.query(taskCheckQuery, [taskId, userId])
 
-    if(!taskCheck.rows.length) {
+    if (!taskCheck.rows.length) {
         throw new Error("Task not found")
     }
 
-    if(!taskCheck.rows[0].is_active){
+    if (!taskCheck.rows[0].is_active) {
         throw new Error("Task Inactive")
     }
 
-    const query =  `
+    const query = `
         INSERT INTO task_daily_status (
             task_id,
             user_id,
@@ -122,7 +122,7 @@ async function updateTaskDailyStatusService(userId, taskId, payload){
 }
 
 // Returns all tasks and completion summary
-async function getTaskDailyStatusService(userId, date){
+async function getTaskDailyStatusService(userId, date) {
     const query = `
         SELECT
             t.id,
@@ -148,21 +148,27 @@ async function getTaskDailyStatusService(userId, date){
             ORDER BY t.created_at DESC
     `;
 
-    const {rows } = await pool.query(query, [userId, date])
+    const { rows } = await pool.query(query, [userId, date])
 
     const total = rows.length;
 
     const completed = rows.filter((task) => task.isCompleted).length;
 
-    const percentage = total === 0 ? 0 : Math.round(completed / total ) * 1000;
+    const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+    // console.log("DAILY STATUS ROWS:", rows);
+    // console.log("SUMMARY DEBUG:", {
+    //     total: rows.length,
+    //     completed: rows.filter((task) => task.isCompleted).length,
+    // });
 
     return {
         date,
         summary: {
             total,
-            completed, 
+            completed,
             percentage
-        }, 
+        },
         tasks: rows
     }
 }

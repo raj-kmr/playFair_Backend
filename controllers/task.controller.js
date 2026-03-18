@@ -51,8 +51,6 @@ async function getTasks(req, res) {
 // Update task daily status
 async function updateTaskDailyStatus(req, res) {
     try {
-        console.log("CONTROLLER BODY:", req.body);
-        console.log("TYPE OF isCompleted:", typeof req.body?.isCompleted);
         const validation = validateDailyStatusBody(req.body)
 
         if (validation.error) {
