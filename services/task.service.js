@@ -173,10 +173,101 @@ async function getTaskDailyStatusService(userId, date) {
     }
 }
 
+async function updateTaskService(userId, taskId, payload) {
+    const {title, description, category, frequency, targetDays} = payload;
+
+    const existingTaskQuery = `
+        SELECT id
+        FROM tasks
+        WHERE id = $1
+            AND user_id = $2
+            AND is_active = true
+        LIMIT 1
+    `
+
+    const existingTaskResult = await pool.query(existingTaskQuery, [taskId, userId]);
+
+    if(!existingTaskResult){
+        throw new Error("TASK_NOT_FOUND");
+    }
+
+    const duplicateCheckQuery = `
+        SELECT id
+        FROM tasks
+        WHERE user_id = $1
+            AND is_active = true
+            AND LOWER(TRIM(title)) = LOWER(TRIM($2))
+            AND id != $3
+        LIMIT 1
+    `
+
+    const duplicateCheckResult = await pool.query(duplicateCheckQuery, [userId, title, taskId]);
+
+    if(duplicateCheckResult.rows.length){
+        throw new Error("DUPLICATE_TASK")
+    }
+
+    const updateQuery = `
+        UPDATE tasks
+        SET
+            title = $1
+            description = $2
+            category = $3
+            frequency = $4
+            target_days = $5
+            updated_at = now()
+        WHERE id = $6
+            AND user_id = $7
+            AND is_active = true
+        RETURNING
+            id,
+            title,
+            desciption,
+            category,
+            frequency,
+            target_days AS "targetDays",
+            created_at AS "createdAt",
+            updated_at AS "updatedAt"
+    `;
+
+    const {rows} = await pool.query(updateQuery, [
+        title,
+        description,
+        category,
+        frequency,
+        targetDays,
+        taskId,
+        userId
+    ]);
+
+    return rows[0];
+}
+
+async function deleteTaskService(userId, taskId) {
+    const query = `
+        UPDATE tasks
+        SET
+            is_active = false,
+            updated_at = now()
+        WHERE id = $1
+            AND user_id = $2
+            AND is_active = true
+        RETURNING id
+    `
+
+    const {rows} = await pool.query(query, [taskId, userId])
+    
+    if(!rows.length){
+        throw new Error("TASK_NOT_FOUND")
+    }
+}
+
 module.exports = {
     createTaskService,
     getTasksService,
     updateTaskDailyStatusService,
-    getTaskDailyStatusService
+    getTaskDailyStatusService,
+    updateTaskService,
+    deleteTaskService
 }
 
