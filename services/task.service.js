@@ -210,11 +210,11 @@ async function updateTaskService(userId, taskId, payload) {
     const updateQuery = `
         UPDATE tasks
         SET
-            title = $1
-            description = $2
-            category = $3
-            frequency = $4
-            target_days = $5
+            title = $1,
+            description = $2,
+            category = $3,
+            frequency = $4,
+            target_days = $5,
             updated_at = now()
         WHERE id = $6
             AND user_id = $7
@@ -222,7 +222,7 @@ async function updateTaskService(userId, taskId, payload) {
         RETURNING
             id,
             title,
-            desciption,
+            description,
             category,
             frequency,
             target_days AS "targetDays",
