@@ -4,6 +4,7 @@ const {
   calculateDurationSeconds,
   formatSessionResponse,
 } = require("../utils/session.utils");
+const { getAvailableMinutes } = require("./unlock.service");
 
 const sessionsService = {
   async startSession({ userId, gameId }) {
@@ -112,10 +113,18 @@ const sessionsService = {
 
       const activeSession = activeSessionResult.rows[0];
       const endedAt = new Date();
-      const durationSeconds = calculateDurationSeconds(
+      let durationSeconds = calculateDurationSeconds(
         activeSession.started_at,
         endedAt
       );
+
+      const {availableMinutes} = await getAvailableMinutes(userId, client);
+      const availableSeconds = availableMinutes * 60;
+
+      // Cap session duration to available time
+      if(durationSeconds > availableMinutes){
+        durationSeconds = availableMinutes;
+      }
 
       /**
        * Step 2:
@@ -135,18 +144,6 @@ const sessionsService = {
         activeSession.id,
       ]);
 
-      /**
-       * Step 3:
-       * Optional but useful:
-       * update games.playtime_hours based on total completed minutes
-       *
-       * Because your games table stores:
-       * - playtime_hours
-       * - initial_playtime_minutes
-       *
-       * For now we can update playtime_hours using:
-       * total completed session duration + initial_playtime_minutes
-       */
       const gameId = activeSession.games_id;
 
       const totalDurationQuery = `

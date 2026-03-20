@@ -120,19 +120,10 @@ CREATE INDEX  idx_tasks_user_active ON tasks(user_id, is_active);
 CREATE INDEX  idx_task_daily_status_user_date ON task_daily_status(user_id, date);
 
 
-CREATE TABLE gaming_unlock_rules (
-    id SERIAL PRIMARY KEY,
-    users_id INTEGER NOT NULL,
-
-    required_tasks INTEGER NOT NULL,
-    unlock_minutes INTEGER NOT NULL,
-
-    is_active BOOLEAN DEFAULT TRUE,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_unlock_user 
-        FOREIGN KEY (users_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE,
+CREATE TABLE unlock_rules (
+     id SERIAL PRIMARY KEY,
+     user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+     minutes_per_task INTEGER NOT NULL DEFAULT 30,
+     daily_limit_minutes INTEGER DEFAULT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

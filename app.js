@@ -5,6 +5,7 @@ const cors = require("cors")
 const port = process.env.PORT;
 const uploadRoutes = require("./routes/uploads")
 const errorHandler = require("./middleware/errorHandler")
+const unlockRules = require("./routes/unlock.router")
 
 //middleware
 app.use(cors())
@@ -26,6 +27,7 @@ app.use("/api", sessionsRoutes)
 app.use("/uploads", express.static("uploads")) // serve uploaded files
 app.use("/uploads", uploadRoutes) // POST /uploads/images
 
+app.use("/unlock-rules", unlockRules);
 
 app.get("/test", (req, res) => {
     res.json({message: "Backend is connected succssfully"})
