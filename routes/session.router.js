@@ -1,7 +1,7 @@
 const express = require("express");
 const sessionsController = require("../controllers/session.controller");
 const verifytoken = require("../middleware/auth.middleware");
-const validateGameAccess = require("../middleware/validateGameAccess")
+const {validateGameAccess} = require("../middleware/validateGameAccess")
 
 const router = express.Router();
 

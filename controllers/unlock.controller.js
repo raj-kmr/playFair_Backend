@@ -64,6 +64,7 @@ async function getRule(req, res){
 async function getAvailableTime(req, res){
     try {
         const userId = req.user.id;
+        console.log("USER ID FROM TOKEN:", userId);
         const data = await getAvailableMinutes(userId)
         res.json(data);
     } catch(err){
