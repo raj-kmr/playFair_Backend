@@ -122,8 +122,8 @@ const sessionsService = {
       const availableSeconds = availableMinutes * 60;
 
       // Cap session duration to available time
-      if(durationSeconds > availableMinutes){
-        durationSeconds = availableMinutes;
+      if(durationSeconds > availableSeconds){
+        durationSeconds = availableSeconds;
       }
 
       /**

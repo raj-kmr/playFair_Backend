@@ -5,36 +5,49 @@ const jwt = require("jsonwebtoken")
 // // Prevent duplicate accounts by enforcing unique email
 // // hash the password and store user details in database
 exports.signup = async (req, res) => {
+    const client = await pool.connect();
     try {
         const { username, email, password } = req.body;
 
+        await client.query("BEGIN");
         const userExists = await pool.query(
             "SELECT id FROM users WHERE email = $1",
             [email]
         );
 
         if (userExists.rows.length > 0) {
+            await client.query("ROLLBACK")
             return res.status(400).json({ message: "User Already Exists!" })
         }
 
         const hashedPassword = await bcrypt.hash(password, 10)
 
-        const userResult = await pool.query(
+        const userResult = await client.query(
             "INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id",
             [username, email, hashedPassword]
         )
 
         const userId = userResult.rows[0].id;
 
-        await pool.query(
+        await client.query(
             "INSERT INTO gameList (user_id) VALUES ($1)",
             [userId]
         )
 
+        await client.query(`
+                INSERT INTO unlock_rules (user_id, minutes_per_task, daily_limit_minutes)
+                VALUES($1, $2, $3)
+            `, [userId])
+
+        await client.query("COMMIT")
+
         res.status(201).json({ message: "Signup Successful" })
     } catch (err) {
+        await client.query("ROLLBACK")
         console.error(err)
         res.status(500).json({message: "Server error"})
+    } finally {
+        client.release();
     }
 
 }

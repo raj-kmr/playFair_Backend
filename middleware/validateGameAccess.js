@@ -1,4 +1,4 @@
-const getAvailableMinutes = require("../services/unlock.service")
+const {getAvailableMinutes} = require("../services/unlock.service")
 
 async function validateGameAccess(req, res, next) {
     try {

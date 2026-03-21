@@ -36,7 +36,7 @@ async function getUsedMinutesToday(userId) {
     const totalSeconds = parseInt(result.rows[0].total_seconds, 10);
 
     // convert seconds → minutes
-    return Math.floor(totalSeconds / 60);
+    return Math.ceil(totalSeconds / 60);
 }
 
 // Calculate Available minutes
