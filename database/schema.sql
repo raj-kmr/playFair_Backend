@@ -58,6 +58,9 @@ CREATE TABLE game_sessions (
             ON DELETE CASCADE
 );
 
+ALTER TABLE game_sessions 
+ADD COLUMN duration_minutes INTEGER;
+
 -- 
 CREATE UNIQUE INDEX uniq_one_active_session_per_user
 ON game_sessions(users_id)
