@@ -21,7 +21,7 @@ async function getPlaytimeAnalytics(req, res) {
             monthly
         })
     } catch (err) {
-        console.err("Playtime Analytics Error: ", err)
+        console.error("Playtime Analytics Error: ", err)
         res.status(500).json({
             message: "Internal server error"
         })
@@ -36,7 +36,7 @@ async function getSessionAnalytics(req, res) {
 
         res.json(stats)
     } catch(err){
-        console.err("Session Analytics Error: ", err);
+        console.error("Session Analytics Error: ", err);
         res.status(500).json({
             message: "Internal server error"
         })
