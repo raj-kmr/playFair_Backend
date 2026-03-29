@@ -18,8 +18,6 @@ async function getCompletedTasksToday(userId) {
         AND date = CURRENT_DATE
     `, [userId]);
 
-    console.log("DEBUG TASK COUNT:", result.rows[0].count);
-
     return parseInt(result.rows[0].count, 10);
 }
 
@@ -41,10 +39,7 @@ async function getUsedMinutesToday(userId) {
 
 // Calculate Available minutes
 async function getAvailableMinutes(userId, dbClient = pool) {
-    console.log("INSIDE getAvailableMinutes");
-
     const rule = await getUnlockRule(userId);
-    console.log("Rule,:  ", rule);
 
     if (!rule) {
         return {

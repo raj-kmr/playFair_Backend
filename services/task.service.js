@@ -156,12 +156,6 @@ async function getTaskDailyStatusService(userId, date) {
 
     const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
 
-    // console.log("DAILY STATUS ROWS:", rows);
-    // console.log("SUMMARY DEBUG:", {
-    //     total: rows.length,
-    //     completed: rows.filter((task) => task.isCompleted).length,
-    // });
-
     return {
         date,
         summary: {
@@ -187,7 +181,7 @@ async function updateTaskService(userId, taskId, payload) {
 
     const existingTaskResult = await pool.query(existingTaskQuery, [taskId, userId]);
 
-    if(!existingTaskResult){
+    if(!existingTaskResult.rows.length){
         throw new Error("TASK_NOT_FOUND");
     }
 

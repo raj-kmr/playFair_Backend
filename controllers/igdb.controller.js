@@ -37,7 +37,6 @@ exports.searchGames = async(req, res) => {
 
         res.json(games)
     } catch (err) {
-        console.log(err)
         res.status(500).json({message: "IGDB search failed"})
     }
 }

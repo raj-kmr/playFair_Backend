@@ -45,7 +45,7 @@ exports.signup = async (req, res) => {
     } catch (err) {
         await client.query("ROLLBACK")
         console.error(err)
-        res.status(500).json({message: "Server error"})
+        res.status(500).json({ message: "Server error" })
     } finally {
         client.release();
     }
@@ -54,28 +54,36 @@ exports.signup = async (req, res) => {
 
 
 exports.signin = async (req, res) => {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    const result = await pool.query(
-        "SELECT id, password FROM users WHERE email = $1",
-        [email]
-    );
+        const result = await pool.query(
+            "SELECT id, password FROM users WHERE email = $1",
+            [email]
+        );
 
-    if (result.rows.length === 0) {
-        return res.status(400).json({ message: "No account with this email!" })
+        if (result.rows.length === 0) {
+            return res.status(400).json({ message: "No account with this email!" })
+        }
+
+        const user = result.rows[0];
+        if (!user) {
+            return res.status(401).json({ message: "Invalid credentails" })
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" })
+        }
+
+        const token = jwt.sign(
+            { id: user.id }, process.env.JWT_SECRET, { expiresIn: "7d" }
+        )
+
+        res.json({ message: "Login successful", userId: user.id, "token": token })
+    } catch (err) {
+        res.status(500).json({message: "Server error"})
     }
 
-    const user = result.rows[0];
-    console.log(user)
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-        return res.status(400).json({ message: "Invalid credentials" })
-    }
-
-    const token = jwt.sign(
-        { id: user.id }, process.env.JWT_SECRET
-    )
-
-    res.json({ message: "Login successful", userId: user.id, "token": token })
 }

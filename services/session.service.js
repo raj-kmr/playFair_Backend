@@ -193,18 +193,6 @@ const sessionsService = {
         [totalHours, gameId]
       );
 
-      console.log("SESSION DEBUG:", {
-        gameId,
-        initialPlaytimeMinutes,
-        existingPlaytimeHours,
-        totalSessionSeconds,
-        baseMinutes,
-        totalMinutes,
-        totalHours,
-      });
-
-      console.log("UPDATED GAME:", updatedGameResult.rows[0]);
-
       await client.query("COMMIT");
 
       return formatSessionResponse(updateResult.rows[0]);
