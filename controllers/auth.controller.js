@@ -1,13 +1,15 @@
 const pool = require("../config/db")
 const bcrypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
+const {signUpSchema, signInSchema} = require("../validators/auth.validator")
 
 // // Prevent duplicate accounts by enforcing unique email
 // // hash the password and store user details in database
 exports.signup = async (req, res) => {
     const client = await pool.connect();
     try {
-        const { username, email, password } = req.body;
+        const parsed = signUpSchema.parse(req.body);
+        const { email, password, username } = parsed;
 
         await client.query("BEGIN");
         const userExists = await pool.query(
@@ -52,10 +54,10 @@ exports.signup = async (req, res) => {
 
 }
 
-
 exports.signin = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const parsed = signInSchema.parse(req.body)
+        const { email, password } = parsed;
 
         const result = await pool.query(
             "SELECT id, password FROM users WHERE email = $1",
