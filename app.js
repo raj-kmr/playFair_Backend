@@ -7,12 +7,13 @@ const uploadRoutes = require("./routes/uploads")
 const errorHandler = require("./middleware/errorHandler")
 const unlockRules = require("./routes/unlock.router")
 const analyticsRoutes = require("./routes/analytics.router")
+const helmet = require("helmet");
 
 //middleware
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
-app.use(errorHandler);
+app.use(helmet())
 
 app.use((req, res, next) => {
     next();
@@ -43,6 +44,7 @@ app.use("/api", taskRoutes);
 const gameRoutes = require("./routes/game.router")
 app.use("/games", gameRoutes)
 
+app.use(errorHandler);
 
 app.listen(port, () => {
     console.log(`App is listening on port: ${port}`)
