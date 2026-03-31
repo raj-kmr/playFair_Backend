@@ -8,12 +8,12 @@ const router = express.Router();
 /**
  * Start a new session for a specific game
  */
-router.post("/games/:id/sessions/start", verifytoken, validateGameAccess, sessionsController.startSession);
+router.post("/games/:id/sessions/start", verifytoken, sessionsController.startSession);
 
 /**
  * End the user's currently active session
  */
-router.post("/games/:id/sessions/end", verifytoken, sessionsController.endSession);
+router.post("/sessions/end", verifytoken, sessionsController.endSession);
 
 /**
  * Get session history for a specific game

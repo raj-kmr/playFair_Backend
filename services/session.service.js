@@ -29,7 +29,7 @@ const sessionsService = {
           g.name,
           gl.user_id
         FROM games g
-        INNER JOIN gameList gl ON g.gamelist_id = gl.id
+        INNER JOIN gamelist gl ON g.gamelist_id = gl.id
         WHERE g.id = $1 AND gl.user_id = $2
         LIMIT 1
       `;
@@ -212,7 +212,7 @@ const sessionsService = {
       SELECT 
         g.id
       FROM games g
-      INNER JOIN gameList gl ON g.gamelist_id = gl.id
+      INNER JOIN gamelist gl ON g.gamelist_id = gl.id
       WHERE g.id = $1 AND gl.user_id = $2
       LIMIT 1
     `;

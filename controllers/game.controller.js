@@ -16,7 +16,7 @@ exports.getGame = async (req, res) => {
                 g.initial_playtime_minutes,
                 g.playtime_hours
             FROM games g
-            JOIN gameList gl ON g.gameList_id = gl.id
+            JOIN gamelist gl ON g.gamelist_id = gl.id
             WHERE gl.user_id = $1
             ORDER BY g.created_at DESC
             `,
@@ -51,20 +51,23 @@ exports.createGame = async (req, res) => {
     const safeInitialPlaytime = Number.isInteger(initialPlaytimeMinutes) &&
         initialPlaytimeMinutes >= 0 ? initialPlaytimeMinutes : 0;
 
-    const playtimeHours = safeInitialPlaytime / 60; 
+    const playtimeHours = safeInitialPlaytime / 60;
 
     try {
         const { rows } = await pool.query(
-            "SELECT id FROM gameList WHERE user_id = $1",
+            "SELECT id FROM gamelist WHERE user_id = $1",
             [userId]
         )
+        if (!rows.length) {
+            return res.status(404).json({ message: "Game list not found" });
+        }
 
         const gameListId = rows[0].id;
 
-        await pool.query(
+        const result = await pool.query(
             `
             INSERT INTO games (
-                gameList_id,
+                gamelist_id,
                 name,
                 image, 
                 description,
@@ -74,11 +77,14 @@ exports.createGame = async (req, res) => {
                 playtime_hours
             )
             VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id    
             `,
             [gameListId, name, imageUrl || null, description || null, igdbId || null, source, safeInitialPlaytime, playtimeHours]
         );
 
-        res.status(201).json({ message: "Game created successfully" })
+        const game = result.rows[0];
+
+        res.status(201).json({ message: "Game created successfully", id: game.id })
     } catch (err) {
         console.error(err)
         res.status(500).json({ message: "Failed to create game" })
@@ -101,7 +107,7 @@ exports.updateGame = async (req, res) => {
 
     try {
         const result = await pool.query(
-            "SELECT g.id FROM games g JOIN gameList gl ON g.gameList_id = gl.id WHERE g.id = $1 AND gl.user_id = $2",
+            "SELECT g.id FROM games g JOIN gamelist gl ON g.gamelist_id = gl.id WHERE g.id = $1 AND gl.user_id = $2",
             [gameId, userId]
         )
 
@@ -133,7 +139,7 @@ exports.deleteGame = async (req, res) => {
 
     try {
         const result = await pool.query(
-            "SELECT g.id FROM games g JOIN gameList gl ON g.gameList_id = gl.id WHERE g.id = $1 AND gl.user_id = $2",
+            "SELECT g.id FROM games g JOIN gamelist gl ON g.gamelist_id = gl.id WHERE g.id = $1 AND gl.user_id = $2",
             [gameId, userId]
         )
 
@@ -174,7 +180,7 @@ exports.addIgdbGame = async (req, res) => {
 
     try {
         const { rows: listRows } = await pool.query(
-            "SELECT id FROM gameList WHERE user_id = $1",
+            "SELECT id FROM gamelist WHERE user_id = $1",
             [userId]
         );
 
@@ -187,7 +193,7 @@ exports.addIgdbGame = async (req, res) => {
         const { rows: existing } = await pool.query(
             `
             SELECT id FROM games
-            WHERE gameList_id = $1 AND igdb_id = $2
+            WHERE gamelist_id = $1 AND igdb_id = $2
             `,
 
             [gameListId, igdbId]
@@ -200,7 +206,7 @@ exports.addIgdbGame = async (req, res) => {
         await pool.query(
             `
             INSERT INTO games (
-                gameList_id,
+                gamelist_id,
                 igdb_id,
                 name,
                 image,

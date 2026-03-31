@@ -11,20 +11,26 @@ const sessionsController = {
       const userId = req.user.id;
       const gameId = Number(req.params.id);
 
-      if (!gameId || Number.isNaN(gameId)) {
+      if (!gameId || isNaN(gameId)) {
         return res.status(400).json({
           message: "Invalid game id",
         });
       }
 
       const session = await sessionsService.startSession({ userId, gameId });
+      
+      if(!session){
+        return res.status(404).json({message: "Failed to start session"})
+      }
 
-      return res.status(201).json({
+      return res.status(200).json({
         message: "Session started successfully",
         session,
       });
     } catch (error) {
-      next(error);
+      return res.status(error.statusCode || 500).json({
+        message: error.message || "Internal server error"
+      })
     }
   },
 
@@ -39,7 +45,9 @@ const sessionsController = {
         session,
       });
     } catch (error) {
-      next(error);
+      return res.status(error.statusCode || 500).json({
+        message: error.message || "Internal server error"
+      })
     }
   },
 
@@ -63,7 +71,9 @@ const sessionsController = {
         sessions,
       });
     } catch (error) {
-      next(error);
+      return res.status(error.statusCode || 500).json({
+        message: error.message || "Internal server error"
+      })
     }
   },
 
@@ -77,7 +87,9 @@ const sessionsController = {
         activeSession,
       });
     } catch (error) {
-      next(error);
+      return res.status(error.statusCode || 500).json({
+        message: error.message || "Internal server error"
+      })
     }
   },
 };
