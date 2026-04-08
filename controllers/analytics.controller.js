@@ -10,13 +10,15 @@ const {
 async function getPlaytimeAnalytics(req, res) {
     try {
         const userId = req.user.id;
+        const timeRange = req.query.range || '7d';
 
-        const total = await getTotalPlaytime(userId);
-        const weekly = await getWeeklyPlaytime(userId);
-        const monthly = await getMonthlyPlaytime(userId);
+        const total = await getTotalPlaytime(userId, timeRange);
+        const weekly = await getWeeklyPlaytime(userId, timeRange);
+        const monthly = await getMonthlyPlaytime(userId, timeRange);
 
         res.json({
-            total_minutes: total.total_minutes,
+            total_minute: total.total_minutes,
+            previous_total_minute: total.previous_total_minutes,
             weekly,
             monthly
         })
@@ -31,8 +33,9 @@ async function getPlaytimeAnalytics(req, res) {
 async function getSessionAnalytics(req, res) {
     try{
         const userId = req.user.id;
+        const timeRange = req.query.range || '7d';
 
-        const stats = await getSessionStats(userId);
+        const stats = await getSessionStats(userId, timeRange);
 
         res.json(stats)
     } catch(err){
@@ -47,8 +50,9 @@ async function getSessionAnalytics(req, res) {
 async function getTaskAnalytics(req, res){
     try{
         const userId = req.user.id;
+        const timeRange = req.query.range || '7d';
 
-        const data = await getTaskCompletionRate(userId);
+        const data = await getTaskCompletionRate(userId, timeRange);
 
         res.json(data);
     } catch(err){
