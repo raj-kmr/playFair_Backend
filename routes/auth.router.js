@@ -3,14 +3,24 @@ const router = express.Router()
 const { signup, signin } = require("../controllers/auth.controller")
 const rateLimit = require("express-rate-limit")
 
-const loginLimiter = rateLimit({
-    windowMs: 15 * 10 * 1000,
-    max: 10,
-    message: "Too many login attempts. Try again later"
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many attempts, please try again after 15 minutes" }
 })
 
-router.post("/signup", signup)
+const strictLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many signup attempts, please try again after 1 hour" }
+})
 
-router.post("/signin", loginLimiter, signin)
+router.post("/signup", strictLimiter, signup)
+
+router.post("/signin", authLimiter, signin)
 
 module.exports = router;
