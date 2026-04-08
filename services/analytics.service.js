@@ -17,15 +17,23 @@ async function getTotalPlaytime (userId) {
 // get playtime for each day (7 days)
 async function getWeeklyPlaytime (userId) {
     const query = `
-        SELECT
-            DATE(started_at) AS day,
-            COALESCE(SUM(duration_minutes), 0) AS minutes
-        FROM game_sessions
-        WHERE users_id = $1
-            AND started_at >= NOW() - INTERVAL '7 days'
-            AND ended_at IS NOT NULL
-        GROUP BY day
-        ORDER BY day ASC
+        WITH date_series AS (
+            SELECT generate_series(
+                CURRENT_DATE - INTERVAL '6 days',
+                CURRENT_DATE,
+                '1 day'
+            )::date AS day
+        )
+        SELECT 
+            ds.day,
+            COALESCE(SUM(gs.duration_minutes), 0) AS minutes
+        FROM date_series ds
+        LEFT JOIN game_sessions gs 
+            ON DATE(gs.started_at) = ds.day 
+            AND gs.users_id = $1
+            AND gs.ended_at IS NOT NULL
+        GROUP BY ds.day
+        ORDER BY ds.day ASC;
     `
 
     const {rows} = await pool.query(query, [userId])
