@@ -85,7 +85,7 @@ CREATE TABLE reminders (
     CONSTRAINT fk_reminder_user 
         FOREIGN KEY (users_id)
         REFERENCES users(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
 
     CONSTRAINT fk_reminder_game
         FOREIGN KEY (games_id)

@@ -13,7 +13,7 @@ router.post("/games/:id/sessions/start", verifytoken, sessionsController.startSe
 /**
  * End the user's currently active session
  */
-router.post("/sessions/end", verifytoken, sessionsController.endSession);
+router.post("/games/:id/sessions/end", verifytoken, sessionsController.endSession);
 
 /**
  * Get session history for a specific game
