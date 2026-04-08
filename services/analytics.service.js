@@ -1,17 +1,48 @@
 const pool = require("../config/db")
 
-async function getTotalPlaytime (userId) {
+async function getTotalPlaytime (userId, timeRange = '7d') {
+    let dateFilter = '';
+    let prevDateFilter = '';
+    
+    // Calculate current period filter
+    if (timeRange === '7d') {
+        dateFilter = 'AND started_at >= NOW() - INTERVAL \'7 days\'';
+        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'14 days\' AND started_at < NOW() - INTERVAL \'7 days\'';
+    } else if (timeRange === '30d') {
+        dateFilter = 'AND started_at >= NOW() - INTERVAL \'30 days\'';
+        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'60 days\' AND started_at < NOW() - INTERVAL \'30 days\'';
+    } else if (timeRange === '90d') {
+        dateFilter = 'AND started_at >= NOW() - INTERVAL \'90 days\'';
+        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'180 days\' AND started_at < NOW() - INTERVAL \'90 days\'';
+    }
+
     const query = `
         SELECT
             COALESCE(SUM(duration_minutes), 0) AS total_minutes
         FROM game_sessions
         WHERE users_id = $1
         AND ended_at IS NOT NULL
+        ${dateFilter}
     `
 
     const { rows } = await pool.query(query, [userId])
+    
+    // Also get previous period data for trend calculation
+    const prevQuery = `
+        SELECT
+            COALESCE(SUM(duration_minutes), 0) AS previous_total_minutes
+        FROM game_sessions
+        WHERE users_id = $1
+        AND ended_at IS NOT NULL
+        ${prevDateFilter}
+    `
+    
+    const { rows: prevRows } = await pool.query(prevQuery, [userId])
 
-    return rows[0];
+    return {
+        total_minutes: rows[0].total_minutes,
+        previous_total_minutes: prevRows[0].previous_total_minutes || 0
+    };
 }
 
 // get playtime for each day (7 days)
@@ -62,7 +93,16 @@ async function getMonthlyPlaytime(userId) {
 
 // Session Analytics
 // Get session statistics
-async function getSessionStats (userId) {
+async function getSessionStats (userId, timeRange = '7d') {
+    let dateFilter = '';
+    if (timeRange === '7d') {
+        dateFilter = 'AND started_at >= NOW() - INTERVAL \'7 days\'';
+    } else if (timeRange === '30d') {
+        dateFilter = 'AND started_at >= NOW() - INTERVAL \'30 days\'';
+    } else if (timeRange === '90d') {
+        dateFilter = 'AND started_at >= NOW() - INTERVAL \'90 days\'';
+    }
+
     const query = `
         SELECT 
             COUNT(*) AS total_sessions,
@@ -71,6 +111,7 @@ async function getSessionStats (userId) {
         FROM game_sessions
         WHERE users_id = $1
             AND ended_at IS NOT NULL
+            ${dateFilter}
     `
 
     const { rows }  = await pool.query(query, [userId])
@@ -84,14 +125,23 @@ async function getSessionStats (userId) {
 
 // Task analytics
 // Get task completion rate
-async function getTaskCompletionRate(userId) {
+async function getTaskCompletionRate(userId, timeRange = '7d') {
+    let dateFilter = '';
+    if (timeRange === '7d') {
+        dateFilter = 'AND date >= NOW() - INTERVAL \'7 days\'';
+    } else if (timeRange === '30d') {
+        dateFilter = 'AND date >= NOW() - INTERVAL \'30 days\'';
+    } else if (timeRange === '90d') {
+        dateFilter = 'AND date >= NOW() - INTERVAL \'90 days\'';
+    }
+
     const query = `
         SELECT
             COUNT(*) FILTER(WHERE is_completed = true) AS completed,
             COUNT(*) AS total
         FROM task_daily_status
         WHERE user_id = $1
-            AND date >= NOW() - INTERVAL '7 days'
+            ${dateFilter}
     `
 
     const { rows } = await pool.query(query, [userId])
