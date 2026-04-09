@@ -130,17 +130,21 @@ const sessionsService = {
        * Step 2:
        * Update the active session with end time + duration
        */
+      const durationMinutes = Math.floor(durationSeconds / 60);
+
       const updateQuery = `
         UPDATE game_sessions
         SET ended_at = $1,
-            duration_seconds = $2
-        WHERE id = $3
+            duration_seconds = $2,
+            duration_minutes = $3
+        WHERE id = $4
         RETURNING *
       `;
 
       const updateResult = await client.query(updateQuery, [
         endedAt.toISOString(),
         durationSeconds,
+        durationMinutes,
         activeSession.id,
       ]);
 

@@ -17,8 +17,8 @@ async function getPlaytimeAnalytics(req, res) {
         const monthly = await getMonthlyPlaytime(userId, timeRange);
 
         res.json({
-            total_minute: total.total_minutes,
-            previous_total_minute: total.previous_total_minutes,
+            total_minutes: Number(total.total_minutes),
+            previous_total_minutes: Number(total.previous_total_minutes),
             weekly,
             monthly
         })
