@@ -6,19 +6,16 @@ async function getTotalPlaytime (userId, timeRange = '7d') {
     
     // Calculate current period filter
     if (timeRange === '7d') {
-        dateFilter = 'AND started_at >= NOW() - INTERVAL \'7 days\'';
-        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'14 days\' AND started_at < NOW() - INTERVAL \'7 days\'';
+        dateFilter = 'AND ended_at >= NOW() - INTERVAL \'7 days\'';
+        prevDateFilter = 'AND ended_at >= NOW() - INTERVAL \'14 days\' AND started_at < NOW() - INTERVAL \'7 days\'';
     } else if (timeRange === '30d') {
-        dateFilter = 'AND started_at >= NOW() - INTERVAL \'30 days\'';
-        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'60 days\' AND started_at < NOW() - INTERVAL \'30 days\'';
-    } else if (timeRange === '90d') {
-        dateFilter = 'AND started_at >= NOW() - INTERVAL \'90 days\'';
-        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'180 days\' AND started_at < NOW() - INTERVAL \'90 days\'';
+        dateFilter = 'AND ended_at >= NOW() - INTERVAL \'30 days\'';
+        prevDateFilter = 'AND ended_at >= NOW() - INTERVAL \'60 days\' AND started_at < NOW() - INTERVAL \'30 days\'';
     }
 
     const query = `
         SELECT
-            COALESCE(SUM(duration_minutes), 0) AS total_minutes
+            COALESCE(SUM(duration_seconds) / 60.0, 0)::FLOAT AS total_minutes
         FROM game_sessions
         WHERE users_id = $1
         AND ended_at IS NOT NULL
@@ -30,7 +27,7 @@ async function getTotalPlaytime (userId, timeRange = '7d') {
     // Also get previous period data for trend calculation
     const prevQuery = `
         SELECT
-            COALESCE(SUM(duration_minutes), 0) AS previous_total_minutes
+            COALESCE(SUM(duration_seconds)/ 60.0, 0)::FLOAT AS previous_total_minutes
         FROM game_sessions
         WHERE users_id = $1
         AND ended_at IS NOT NULL
@@ -56,11 +53,11 @@ async function getWeeklyPlaytime (userId) {
             )::date AS day
         )
         SELECT 
-            ds.day,
-            COALESCE(SUM(gs.duration_minutes), 0) AS minutes
+            TO_CHAR(ds.day, 'YYYY-MM-DD') AS day,
+            COALESCE(SUM(gs.duration_seconds) / 60.0, 0)::FLOAT AS minutes
         FROM date_series ds
         LEFT JOIN game_sessions gs 
-            ON DATE(gs.started_at) = ds.day 
+            ON DATE(gs.ended_at) = ds.day 
             AND gs.users_id = $1
             AND gs.ended_at IS NOT NULL
         GROUP BY ds.day
@@ -76,14 +73,14 @@ async function getWeeklyPlaytime (userId) {
 async function getMonthlyPlaytime(userId) {
     const query = `
         SELECT
-            DATE_TRUNC('week', started_at) AS week,
-            COALESCE(SUM(duration_minutes), 0) AS minutes
+            TO_CHAR(DATE_TRUNC('week', ended_at), 'YYYY-MM-DD') AS week,
+            COALESCE(SUM(duration_seconds) / 60.0, 0)::FLOAT AS minutes
         FROM game_sessions
         WHERE users_id = $1
-            AND started_at >= NOW() - INTERVAL '1 month'
+            AND ended_at >= NOW() - INTERVAL '1 month'
             AND ended_at IS NOT NULL
-        GROUP BY week
-        ORDER BY week ASC
+        GROUP BY DATE_TRUNC('week', ended_at)
+        ORDER BY DATE_TRUNC('week', ended_at) ASC
     `
 
     const { rows } = await pool.query(query, [userId])
@@ -95,19 +92,23 @@ async function getMonthlyPlaytime(userId) {
 // Get session statistics
 async function getSessionStats (userId, timeRange = '7d') {
     let dateFilter = '';
+    let prevDateFilter = '';
     if (timeRange === '7d') {
         dateFilter = 'AND started_at >= NOW() - INTERVAL \'7 days\'';
+        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'14 days\' AND started_at < NOW() - INTERVAL \'7 days\'';
     } else if (timeRange === '30d') {
         dateFilter = 'AND started_at >= NOW() - INTERVAL \'30 days\'';
+        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'60 days\' AND started_at < NOW() - INTERVAL \'30 days\'';
     } else if (timeRange === '90d') {
         dateFilter = 'AND started_at >= NOW() - INTERVAL \'90 days\'';
+        prevDateFilter = 'AND started_at >= NOW() - INTERVAL \'180 days\' AND started_at < NOW() - INTERVAL \'90 days\'';
     }
 
     const query = `
         SELECT 
             COUNT(*) AS total_sessions,
-            COALESCE(AVG(duration_minutes), 0)::Float AS avg_session_minutes,
-            COALESCE(MAX(duration_minutes), 0) AS max_session_minutes
+            COALESCE(AVG(duration_seconds) / 60.0, 0)::FLOAT AS avg_session_minutes,
+            COALESCE(MAX(duration_seconds) / 60.0, 0)::FLOAT AS max_session_minutes
         FROM game_sessions
         WHERE users_id = $1
             AND ended_at IS NOT NULL
@@ -116,10 +117,22 @@ async function getSessionStats (userId, timeRange = '7d') {
 
     const { rows }  = await pool.query(query, [userId])
 
+    const prevQuery = `
+        SELECT 
+            COUNT(*) AS previous_week_sessions
+        FROM game_sessions
+        WHERE users_id = $1
+            AND ended_at IS NOT NULL
+            ${prevDateFilter}
+    `
+
+    const { rows: prevRows } = await pool.query(prevQuery, [userId])
+
     return {
         total_sessions: parseInt(rows[0].total_sessions, 10),
-        avg_session_minutes: parseFloat(rows[0].avg_session_minutes),
-        max_session_minutes: parseInt(rows[0].max_session_minutes, 10)
+        avg_session_minutes: Number(rows[0].avg_session_minutes),
+        max_session_minutes: Number(rows[0].max_session_minutes, 10),
+        previous_week_sessions: parseInt(prevRows[0].previous_week_sessions, 10) || 0
     }
 }
 
