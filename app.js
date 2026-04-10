@@ -2,7 +2,6 @@ require("dotenv").config({path: ".env"})
 const express = require("express")
 const app = express()
 const cors = require("cors")
-const port = process.env.PORT;
 const uploadRoutes = require("./routes/uploads")
 const errorHandler = require("./middleware/errorHandler")
 const unlockRules = require("./routes/unlock.router")
@@ -18,6 +17,9 @@ app.use(helmet())
 app.use((req, res, next) => {
     next();
 })
+
+const reminderRoutes = require("./reminders/reminders.routes");
+app.use("/api/reminders", reminderRoutes);
 
 app.use("/igdb", require("./routes/igdb.router"));
 const sessionsRoutes = require("./routes/session.router")
