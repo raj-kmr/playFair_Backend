@@ -18,7 +18,7 @@ app.use((req, res, next) => {
     next();
 })
 
-const reminderRoutes = require("./reminders/reminders.routes");
+const reminderRoutes = require("./routes/reminders.router");
 app.use("/api/reminders", reminderRoutes);
 
 app.use("/igdb", require("./routes/igdb.router"));
