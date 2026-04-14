@@ -92,3 +92,24 @@ exports.signin = async (req, res) => {
     }
 
 }
+
+exports.savePushToken = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { pushToken } = req.body;
+
+        if (!pushToken) {
+            return res.status(400).json({ message: "Push token is required" });
+        }
+
+        await pool.query(
+            "UPDATE users SET expo_push_token = $1 WHERE id = $2",
+            [pushToken, userId]
+        );
+
+        res.json({ message: "Push token saved successfully" });
+    } catch (err) {
+        console.error("Error saving push token:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+}
