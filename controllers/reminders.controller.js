@@ -2,21 +2,28 @@ const { error } = require("node:console");
 const { createReminder, getReminders, updateReminder, deleteReminders } = require("../services/reminders.service")
 const {validateCreateReminder, validateUpdateReminder} = require("../validators/reminders.validator")
 
-async function creatingReminder(res, req){
+async function creatingReminder(req, res){
     try {
-        const error = validateCreateReminder(req.body);
-        if(error) return res.status(400).json({error});
+        const validationError = await validateCreateReminder(req.body);
+        if(validationError) {
+            console.log("Validation error:", validationError);
+            console.log("Request body:", req.body);
+            return res.status(400).json({error: validationError});
+        }
 
         const reminder = await createReminder({
             userId: req.user.id,
             gamesId: req.body.gamesId,
             reminderType: req.body.reminderType,
-            reminderValue: req.body.reminderValue
+            reminderValue: req.body.reminderValue,
+            scheduledTime: req.body.scheduledTime,
+            scheduledDays: req.body.scheduledDays
         });
 
         res.status(201).json(reminder);
     } catch(err){
-        res.status(500).json({error: err.message})
+        console.error("Create reminder error:", err);
+        res.status(500).json({error: err.message || String(err)})
     }
 }
 
