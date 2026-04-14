@@ -77,6 +77,8 @@ CREATE TABLE reminders (
 
     reminder_type VARCHAR(50) NOT NULL,
     reminder_value INTEGER NOT NULL,
+    scheduled_time TIME,
+    scheduled_days VARCHAR(20)[],
 
     is_active BOOLEAN DEFAULT TRUE,
 
@@ -130,3 +132,19 @@ CREATE TABLE unlock_rules (
      daily_limit_minutes INTEGER DEFAULT NULL,
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE notification_queue (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    data JSONB,
+    sent BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP
+);
+
+CREATE INDEX idx_notification_queue_sent ON notification_queue(sent);
+CREATE INDEX idx_notification_queue_user_id ON notification_queue(user_id);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token TEXT;
