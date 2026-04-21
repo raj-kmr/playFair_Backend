@@ -8,8 +8,12 @@ const unlockRules = require("./routes/unlock.router")
 const analyticsRoutes = require("./routes/analytics.router")
 const helmet = require("helmet");
 
-//middleware
-app.use(cors())
+//middleware - Allow connections from any device on local network
+app.use(cors({
+    origin: true, // Allow all origins (for development only)
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 app.use(helmet())
